@@ -11,8 +11,6 @@ function nasapic($atts)//variables de entrada: cuenta,repositorio,tipo,x,y
 {
 	$img_file='nasa.jpg';
 	$modfolder='wp-content/plugins/nasapic/';
-	//function get_site_url(){return 'http://192.168.1.10/wp';}
-
 
 	if( !file_exists($modfolder.$img_file) || date("d/m",filemtime($modfolder.$img_file)) != date("d/m") )
 	{
