@@ -10,12 +10,11 @@
 function nasapic($atts)//variables de entrada: cuenta,repositorio,tipo,x,y
 {
 	$img_file='nasa.jpg';
-	$modfolder='wp-content/plugins/nasapic/';
+	$noimgerror=false;
 
-	if( !file_exists($modfolder.$img_file) || date("d/m",filemtime($modfolder.$img_file)) != date("d/m") )
+	if( !file_exists(plugin_dir_path( __FILE__ ).$img_file) ||  filesize(plugin_dir_path( __FILE__ ).$img_file) <=0 || date("d/m",filemtime(plugin_dir_path( __FILE__ ).$img_file)) != date("d/m") )
 	{
 		$ch = curl_init("https://apod.nasa.gov/apod/astropix.html");
-		//curl_setopt($ch, CURLOPT_USERAGENT, $useragent);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_BINARYTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
@@ -27,15 +26,27 @@ function nasapic($atts)//variables de entrada: cuenta,repositorio,tipo,x,y
 		$b=stripos($contenido,'"',$real_start);
 		$imgurl=substr($contenido,$real_start,$b-$real_start);
 
-		grab_image('https://apod.nasa.gov/apod/'.$imgurl , $modfolder.$img_file);
+		if(file_exists(plugin_dir_path( __FILE__ ).$img_file) && filesize(plugin_dir_path( __FILE__ ).$img_file)>0)	//si existía la renombra por si la nueva no la obtiene bien
+			rename(plugin_dir_path( __FILE__ ).$img_file,plugin_dir_path( __FILE__ ).$img_file.".old");
 		
-		if( isset($atts['x']) && isset($atts['y']) )
-			$img = resize_image($modfolder.$img_file, $atts['x'], $atts['y']);
+		grab_image('https://apod.nasa.gov/apod/'.$imgurl , plugin_dir_path( __FILE__ ).$img_file);
+		
+		if( !file_exists(plugin_dir_path( __FILE__ ).$img_file) || filesize(plugin_dir_path( __FILE__ ).$img_file) <=0  ) //si no existe o su tamaño es 0  le ponemos la imagen del día antes
+		{
+			if(file_exists(plugin_dir_path( __FILE__ ).$img_file.".old"))
+				$img_file=$img_file.".old";
+			else
+				$noimgerror=true;	//si tampoco pudo coger ni la imagen anterior, marcamos flag de error para que no aparezca nada
+		}
 		else
-			$img = resize_image($modfolder.$img_file, 350, 350);
-		
-		imagejpeg($img, $modfolder.$img_file ,100); //75 es la calidad (de 1-100)
-
+		{
+			if( isset($atts['x']) && isset($atts['y']) )
+				$img = resize_image(plugin_dir_path( __FILE__ ).$img_file, $atts['x'], $atts['y']);
+			else
+				$img = resize_image(plugin_dir_path( __FILE__ ).$img_file, 350, 350);
+			
+			//imagejpeg($img, plugin_dir_path( __FILE__ ).$img_file ,90); //90 es la calidad (de 1-100)
+		}
 	}
 	
 	if(isset($atts["border"]) && $atts["border"]=="radius")$border_var="border-radius: 10px;";
@@ -47,7 +58,8 @@ function nasapic($atts)//variables de entrada: cuenta,repositorio,tipo,x,y
 	if(isset($atts['y']))$y=' height="'.$atts['y'].'" ';
 	else $y="";
 	
-	echo '<a href="https://apod.nasa.gov/"> <img src="'.get_site_url().'/'.$modfolder.$img_file.'" '.$x.$y.' style="'.$border_var.'" alt="nasa pic of the day"></a>';
+	if(!$noimgerror)	//si no hubo error, es decir, si encontró la imagen o la de la vez anterior
+		echo '<a href="https://apod.nasa.gov/"> <img src="'.plugin_dir_url( __FILE__ ).$img_file.'" '.$x.$y.' style="'.$border_var.'" alt="nasa pic of the day"></a>';
 }
 add_shortcode('nasapic', 'nasapic');
 
@@ -72,7 +84,6 @@ function nasapic_button_script()
     }
 }
 add_action("admin_print_footer_scripts", "nasapic_button_script");
-
 
 
 //ensure that in php.ini allow_url_fopen is enabled.
